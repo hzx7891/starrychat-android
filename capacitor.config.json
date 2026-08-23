@@ -1,0 +1,6 @@
+﻿{
+  "appId": "com.starrychat.com",
+  "appName": "StarryChat",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
