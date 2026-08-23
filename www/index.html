@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>星迹 StarryChat</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236C5CE7'/%3E%3Cstop offset='100%25' stop-color='%2300B894'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='url(%23g)'/%3E%3Ctext x='50' y='72' font-size='60' text-anchor='middle' fill='white' font-family='system-ui'%3E%E2%9C%A6%3C/text%3E%3C/svg%3E" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        /* ============================================================
+           星迹 StarryChat - 完整样式表
+           包含：变量、重置、组件、页面、动画、响应式
+           ============================================================ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #6C5CE7;
+            --primary-light: #a29bfe;
+            --secondary: #00B894;
+            --secondary-light: #55efc4;
+            --bg-primary: #0a0a1a;
+            --bg-secondary: #12122a;
+            --bg-surface: rgba(255, 255, 255, 0.05);
+            --bg-surface-hover: rgba(255, 255, 255, 0.1);
+            --bg-card: rgba(255, 255, 255, 0.06);
+            --text-primary: #f0f0f5;
+            --text-secondary: #a8a8c8;
+            --text-muted: #6a6a8a;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.6);
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --sidebar-width: 280px;
+            --header-height: 60px;
+            --transition: 0.3s ease;
+            --transition-fast: 0.15s ease;
+        }
+        body.light {
+            --bg-primary: #f0f0f5;
+            --bg-secondary: #e8e8f0;
+            --bg-surface: rgba(255, 255, 255, 0.7);
+            --bg-surface-hover: rgba(0, 0, 0, 0.05);
+            --bg-card: rgba(255, 255, 255, 0.8);
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a4a6a;
+            --text-muted: #8a8aaa;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.18);
+        }
+        html, body { height: 100%; font-family: var(--font); background: var(--bg-primary); color: var(--text-primary); overflow: hidden; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: var(--radius-full); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-light); }
+
+        /* ===== 按钮 ===== */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 12px 28px; border: none; border-radius: var(--radius-full);
+            font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all var(--transition);
+            font-family: var(--font);
+        }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; box-shadow: 0 4px 20px rgba(108, 92, 231, 0.35); }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 28px rgba(108, 92, 231, 0.45); }
+        .btn-secondary { background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-color); backdrop-filter: blur(12px); }
+        .btn-secondary:hover:not(:disabled) { background: var(--bg-surface-hover); transform: translateY(-2px); }
+        .btn-sm { padding: 6px 16px; font-size: 0.8rem; border-radius: var(--radius-full); }
+
+        .input-field {
+            width: 100%; padding: 14px 18px; border-radius: var(--radius-md);
+            border: 1px solid var(--border-color); background: var(--bg-surface);
+            color: var(--text-primary); font-size: 0.95rem; outline: none;
+            transition: all var(--transition); font-family: var(--font);
+        }
+        .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.15); }
+        .input-field::placeholder { color: var(--text-muted); }
+
+        .card {
+            background: var(--bg-card); backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color); border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+        }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid var(--border-color); background: var(--bg-surface); }
+        .avatar-sm { width: 32px; height: 32px; }
+        .avatar-lg { width: 64px; height: 64px; }
+        .icon-btn {
+            width: 40px; height: 40px; border-radius: 50%; border: none; background: transparent;
+            color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; transition: all var(--transition);
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .icon-btn:hover { background: var(--bg-surface); color: var(--text-primary); transform: scale(1.05); }
+
+        /* ===== 欢迎页 ===== */
+        #welcomePage { position: fixed; inset: 0; background: var(--bg-primary); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+        #welcomePage .card { max-width: 500px; width: 100%; padding: 48px 40px; text-align: center; animation: fadeUp 0.8s ease; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .welcome-icon { font-size: 4rem; display: block; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+        .welcome-title { font-size: 2.4rem; font-weight: 800; background: linear-gradient(135deg, var(--primary-light), var(--secondary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .welcome-sub { color: var(--text-secondary); font-size: 1rem; margin-bottom: 32px; }
+        .typewriter-wrap { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 3rem; margin-bottom: 12px; }
+        .typewriter-text { font-size: 1.4rem; font-weight: 600; border-right: 2px solid var(--primary); padding-right: 4px; white-space: nowrap; overflow: hidden; animation: blink 0.8s step-end infinite; }
+        @keyframes blink { 0%,100% { border-color: var(--primary); } 50% { border-color: transparent; } }
+        .typewriter-emoji { font-size: 2rem; animation: float 2.5s ease-in-out infinite; }
+        .welcome-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+
+        /* ===== 认证页 ===== */
+        #authPage { position: fixed; inset: 0; background: var(--bg-primary); display: none; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
+        .auth-box { width: 400px; max-width: 100%; padding: 40px 36px; animation: fadeUp 0.6s ease; }
+        .auth-box h2 { font-size: 1.6rem; font-weight: 700; text-align: center; background: linear-gradient(135deg, var(--primary-light), var(--secondary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .auth-box .subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 28px; }
+        .auth-box .input-field { margin-bottom: 14px; }
+        .auth-box .btn { width: 100%; margin-top: 4px; }
+        .auth-box .switch { text-align: center; margin-top: 18px; color: var(--text-secondary); cursor: pointer; }
+        .auth-box .switch:hover { color: var(--primary-light); }
+        .auth-box .error { color: #e74c3c; text-align: center; margin-top: 10px; font-size: 0.85rem; min-height: 1.4em; }
+        .auth-box .legal-text { font-size: 0.7rem; color: var(--text-muted); margin-top: 16px; line-height: 1.6; }
+        .auth-box .legal-text a { color: var(--primary-light); text-decoration: none; }
+        .auth-box .legal-text a:hover { text-decoration: underline; }
+        .remember-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 18px; color: var(--text-secondary); font-size: 0.9rem; cursor: pointer; }
+        .remember-row input[type="checkbox"] { accent-color: var(--primary); width: 18px; height: 18px; cursor: pointer; }
+
+        /* ===== 签名页 ===== */
+        #signaturePage { position: fixed; inset: 0; background: var(--bg-primary); display: none; justify-content: center; align-items: center; z-index: 1001; padding: 20px; }
+        .signature-box { width: 420px; max-width: 100%; padding: 40px 36px; text-align: center; animation: fadeUp 0.6s ease; }
+        .signature-box h2 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, var(--primary-light), var(--secondary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .signature-box textarea { resize: none; height: 90px; margin-bottom: 20px; }
+        .signature-box .btn { width: 100%; }
+        .signature-box .avatar-upload { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; justify-content: center; }
+        .signature-box .avatar-upload img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid var(--border-color); cursor: pointer; }
+        .signature-box .avatar-upload img:hover { border-color: var(--primary); transform: scale(1.04); }
+
+        /* ===== 聊天主界面 ===== */
+        #chatApp { display: none; width: 100%; height: 100%; flex-direction: column; background: var(--bg-primary); }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 0 24px; height: var(--header-height); background: var(--bg-card); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-color); flex-shrink: 0; z-index: 10; }
+        .top-bar .brand { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .top-bar .brand span { background: linear-gradient(135deg, var(--primary-light), var(--secondary-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .top-bar .actions { display: flex; align-items: center; gap: 6px; }
+        .main-area { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: var(--sidebar-width); background: var(--bg-card); backdrop-filter: blur(20px); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; transition: transform var(--transition); z-index: 20; }
+        .sidebar-header { padding: 16px 20px 8px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+        .room-list { flex: 1; overflow-y: auto; padding: 4px 12px 12px; }
+        .room-item { padding: 10px 16px; border-radius: var(--radius-md); margin-bottom: 2px; cursor: pointer; color: var(--text-secondary); transition: all var(--transition); display: flex; align-items: center; gap: 10px; font-size: 0.92rem; font-weight: 500; justify-content: space-between; }
+        .room-item:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
+        .room-item.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: inset 3px 0 0 var(--primary); }
+        .room-item .room-actions { display: flex; gap: 4px; opacity: 0; transition: opacity var(--transition); }
+        .room-item:hover .room-actions { opacity: 1; }
+        .room-item .room-actions button { background: rgba(0, 0, 0, 0.5); border: none; color: #fff; font-size: 0.55rem; padding: 2px 8px; border-radius: var(--radius-full); cursor: pointer; }
+        .room-item .room-actions button:hover { background: rgba(231, 76, 60, 0.8); }
+        .create-room-btn { margin: 8px 12px 16px; padding: 12px; background: var(--bg-surface); border: 1px dashed var(--border-color); border-radius: var(--radius-md); color: var(--text-secondary); font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all var(--transition); }
+        .create-room-btn:hover { background: var(--bg-surface-hover); color: var(--text-primary); border-color: var(--primary); }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); min-width: 0; }
+        .chat-header { padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; flex-shrink: 0; background: var(--bg-card); backdrop-filter: blur(12px); }
+        .chat-header .room-name { font-size: 1.05rem; font-weight: 600; }
+        .chat-header .room-meta { color: var(--text-muted); font-size: 0.8rem; margin-left: auto; }
+        .member-list { padding: 6px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; min-height: 44px; align-items: center; background: var(--bg-card); backdrop-filter: blur(8px); }
+        .member-list .member-tag { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; border-radius: var(--radius-full); background: var(--bg-surface); font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; transition: all var(--transition); border: 1px solid transparent; }
+        .member-list .member-tag:hover { background: var(--bg-surface-hover); border-color: var(--border-color); color: var(--text-primary); }
+        .member-list .member-tag .avatar { width: 24px; height: 24px; }
+        .member-list .member-tag .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); display: inline-block; margin-left: 2px; }
+        .search-bar { display: flex; align-items: center; gap: 8px; padding: 6px 20px; background: var(--bg-card); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .search-bar input { flex: 1; padding: 8px 14px; border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.85rem; outline: none; transition: all var(--transition); }
+        .search-bar input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1); }
+
+        #chatMessages { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-primary); }
+        .load-more-trigger { text-align: center; padding: 12px 0; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; transition: all var(--transition); border: none; background: transparent; display: block; }
+        .load-more-trigger:hover { color: var(--text-primary); }
+        .load-more-trigger.loading { color: var(--text-muted); cursor: default; }
+        .load-more-trigger .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border-color); border-top: 2px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .msg { display: flex; align-items: flex-start; gap: 12px; padding: 12px 18px; border-radius: var(--radius-md); max-width: 72%; word-break: break-word; animation: msgIn 0.25s ease-out; position: relative; transition: all var(--transition); }
+        @keyframes msgIn { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .msg.self { align-self: flex-end; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; border-bottom-right-radius: 4px; }
+        .msg.other { align-self: flex-start; background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
+        .msg.system-msg { align-self: center; max-width: 85%; background: linear-gradient(135deg, rgba(241, 196, 15, 0.18), rgba(241, 196, 15, 0.05)); border: 1px solid rgba(241, 196, 15, 0.35); border-radius: var(--radius-full); padding: 8px 24px; }
+        .msg.system-msg .msg-username { color: #f1c40f !important; font-weight: 700; }
+        .msg .avatar { width: 36px; height: 36px; cursor: pointer; }
+        .msg .msg-content { flex: 1; min-width: 0; }
+        .msg .msg-username { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 2px; }
+        .msg.self .msg-username { color: rgba(255, 255, 255, 0.7); }
+        .msg .msg-text { font-size: 0.95rem; line-height: 1.5; }
+        .msg .msg-time { font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; opacity: 0.7; }
+        .msg .msg-img { max-width: 240px; border-radius: var(--radius-sm); margin-top: 4px; cursor: pointer; transition: transform var(--transition); }
+        .msg .msg-img:hover { transform: scale(1.02); }
+        .msg-actions { position: absolute; top: 4px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity var(--transition); }
+        .msg:hover .msg-actions { opacity: 1; }
+        .msg-actions button { background: rgba(0, 0, 0, 0.6); border: none; color: #fff; font-size: 0.55rem; padding: 2px 8px; border-radius: var(--radius-full); cursor: pointer; backdrop-filter: blur(4px); transition: all 0.2s; }
+        .msg-actions .report-btn:hover { background: rgba(243, 156, 18, 0.8); }
+        .msg-actions .delete-btn:hover { background: rgba(231, 76, 60, 0.8); }
+
+        .input-area { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-top: 1px solid var(--border-color); background: var(--bg-card); backdrop-filter: blur(20px); flex-shrink: 0; min-height: 64px; }
+        .input-area input[type="text"] { flex: 1; padding: 10px 18px; border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: all var(--transition); }
+        .input-area input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1); }
+        .send-btn { width: 44px; height: 44px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; font-size: 1.2rem; cursor: pointer; transition: all var(--transition); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(108, 92, 231, 0.3); flex-shrink: 0; }
+        .send-btn:hover { transform: scale(1.06); box-shadow: 0 6px 24px rgba(108, 92, 231, 0.4); }
+        .send-btn:active { transform: scale(0.92); }
+
+        #emojiPanel { display: none; padding: 12px 16px; background: var(--bg-card); backdrop-filter: blur(20px); border-top: 1px solid var(--border-color); flex-shrink: 0; }
+        #emojiGrid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-height: 140px; overflow-y: auto; }
+        #emojiGrid span { font-size: 1.5rem; cursor: pointer; padding: 4px; border-radius: var(--radius-sm); text-align: center; transition: all var(--transition); }
+        #emojiGrid span:hover { background: var(--bg-surface); transform: scale(1.2); }
+
+        #menuToggle { display: none; position: fixed; top: 12px; left: 12px; z-index: 100; width: 42px; height: 42px; border-radius: 50%; border: none; background: var(--bg-card); backdrop-filter: blur(12px); color: var(--text-primary); font-size: 1.2rem; cursor: pointer; border: 1px solid var(--border-color); }
+        #menuToggle:hover { background: var(--bg-surface-hover); }
+
+        /* ===== 模态框 ===== */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 200; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: var(--bg-card); backdrop-filter: blur(24px); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; max-width: 440px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; animation: modalPop 0.3s ease; box-shadow: var(--shadow-lg); }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.92) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-content h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+        .modal-content .modal-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+        .modal-content .modal-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+        .modal-content .modal-actions .btn { flex: 1; min-width: 80px; }
+
+        #videoCallModal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.92); backdrop-filter: blur(16px); z-index: 300; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        #videoCallModal.active { display: flex; }
+        .video-grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%; max-width: 800px; }
+        .video-grid video { width: 100%; max-width: 380px; border-radius: var(--radius-md); background: #000; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); border: 2px solid var(--border-color); object-fit: cover; aspect-ratio: 4/3; }
+        .video-controls { margin-top: 24px; display: flex; gap: 16px; }
+
+        #privateChatContent .private-msgs { flex: 1; overflow-y: auto; padding: 8px 4px; margin: 8px 0 12px; max-height: 300px; background: var(--bg-primary); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 6px; }
+        #privateChatContent .private-input { display: flex; gap: 10px; margin-top: 4px; }
+        #privateChatContent .private-input input { flex: 1; padding: 10px 16px; border-radius: var(--radius-full); border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-primary); outline: none; }
+        #privateChatContent .private-input input:focus { border-color: var(--primary); }
+
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .text-muted { color: var(--text-muted); }
+        .text-secondary { color: var(--text-secondary); }
+        .text-danger { color: #e74c3c; }
+        .text-success { color: var(--secondary); }
+        .mt-8 { margin-top: 8px; }
+        .mt-16 { margin-top: 16px; }
+        .flex { display: flex; }
+        .flex-center { align-items: center; justify-content: center; }
+        .gap-8 { gap: 8px; }
+        .gap-12 { gap: 12px; }
+        .w-full { width: 100%; }
+        .link-safe { color: var(--primary-light); text-decoration: none; }
+        .link-safe:hover { text-decoration: underline; }
+        .room-not-found { text-align: center; padding: 80px 20px; }
+        .room-not-found .icon { font-size: 4rem; margin-bottom: 16px; }
+        .room-not-found h2 { font-size: 1.5rem; margin-bottom: 8px; }
+        .room-not-found p { color: var(--text-muted); }
+        .room-not-found .btn { margin-top: 20px; }
+
+        .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border-color); border-top: 2px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 768px) {
+            #menuToggle { display: flex; align-items: center; justify-content: center; }
+            .sidebar { position: fixed; left: 0; top: 0; height: 100%; transform: translateX(-100%); width: 280px; z-index: 90; border-right: 1px solid var(--border-color); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
+            .sidebar.show { transform: translateX(0); }
+            .chat-area { width: 100%; }
+            .msg { max-width: 88% !important; }
+            .top-bar .brand .desktop-only { display: none; }
+            .welcome-btns .btn { min-width: 100px; padding: 10px 20px; }
+            #welcomePage .card { padding: 32px 24px; }
+            .auth-box { padding: 32px 24px; }
+            .signature-box { padding: 32px 24px; }
+            .chat-header { padding: 10px 16px; }
+            #chatMessages { padding: 12px 16px; }
+            .input-area { padding: 8px 12px; gap: 6px; }
+            .member-list { padding: 4px 16px; min-height: 36px; }
+            .search-bar { padding: 4px 16px; }
+            .msg .msg-img { max-width: 160px; }
+            .room-item .room-actions { opacity: 1; }
+        }
+        @media (max-width: 480px) {
+            .top-bar .actions .btn-secondary { padding: 4px 10px; font-size: 0.7rem; }
+            .icon-btn { width: 34px; height: 34px; font-size: 1rem; }
+            .send-btn { width: 38px; height: 38px; font-size: 1rem; }
+            .input-area input[type="text"] { font-size: 0.85rem; padding: 8px 14px; }
+            .msg { padding: 10px 14px; gap: 8px; }
+            .msg .avatar { width: 30px; height: 30px; }
+            .welcome-title { font-size: 1.8rem; }
+            .typewriter-text { font-size: 1.1rem; }
+            .auth-box .legal-text { font-size: 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="menuToggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- 欢迎页 -->
+    <div id="welcomePage">
+        <div class="card">
+            <span class="welcome-icon">✧</span>
+            <div class="welcome-title">星迹 StarryChat</div>
+            <div class="welcome-sub">连接每一颗星 · 开启你的聊天之旅</div>
+            <div class="typewriter-wrap">
+                <span class="typewriter-text" id="typewriterText"></span>
+                <span class="typewriter-emoji" id="typewriterEmoji">✨</span>
+            </div>
+            <div class="welcome-btns">
+                <button class="btn btn-primary" onclick="showSignaturePage()">✨ 开始个性化</button>
+                <button class="btn btn-secondary" onclick="skipToAuth()">跳过 →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 签名页 -->
+    <div id="signaturePage">
+        <div class="signature-box card">
+            <h2>✍️ 设定你的个性签名</h2>
+            <p class="text-secondary">一句话介绍自己，上传头像</p>
+            <div class="avatar-upload">
+                <img id="sigAvatarPreview" src="" onclick="document.getElementById('sigAvatarInput').click()" />
+                <input type="file" id="sigAvatarInput" accept="image/*" style="display:none;" />
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sigAvatarInput').click()">📷 换头像</button>
+            </div>
+            <textarea class="input-field" id="signatureInput" placeholder="写一句话介绍自己…"></textarea>
+            <button class="btn btn-primary" onclick="saveSignatureAndEnter()">🚀 保存并进入聊天室</button>
+        </div>
+    </div>
+
+    <!-- 认证页 -->
+    <div id="authPage">
+        <div class="auth-box card" id="loginBox">
+            <h2>✦ 登录</h2>
+            <p class="subtitle">回到星迹，与好友重逢</p>
+            <input class="input-field" id="loginUser" placeholder="用户名" autocomplete="off" />
+            <input class="input-field" id="loginPassword" type="password" placeholder="密码" />
+            <label class="remember-row">
+                <input type="checkbox" id="rememberMe" checked /> 记住我 (7天免登录)
+            </label>
+            <button class="btn btn-primary" id="loginBtn" onclick="login()">登录</button>
+            <div class="switch" onclick="showRegister()">还没有账号？注册 →</div>
+            <div id="loginError" class="error"></div>
+            <div class="legal-text">
+                登录注册即表示你同意
+                <a href="terms.html" target="_blank">《用户协议》</a>
+                <a href="privacy.html" target="_blank">《隐私政策》</a>
+                <a href="children.html" target="_blank">《儿童个人信息保护规则》</a>
+                <a href="rules.html" target="_blank">《社区公约》</a>
+            </div>
+        </div>
+        <div class="auth-box card" id="regBox" style="display:none;">
+            <h2>✦ 注册</h2>
+            <p class="subtitle">加入星迹，开启你的星空旅程</p>
+            <input class="input-field" id="regUsername" placeholder="用户名" />
+            <input class="input-field" id="regPassword" type="password" placeholder="密码" />
+            <button class="btn btn-primary" id="regBtn" onclick="register()">注册</button>
+            <div class="switch" onclick="showLogin()">已有账号？返回登录</div>
+            <div id="regError" class="error"></div>
+            <div class="legal-text">
+                登录注册即表示你同意
+                <a href="terms.html" target="_blank">《用户协议》</a>
+                <a href="privacy.html" target="_blank">《隐私政策》</a>
+                <a href="children.html" target="_blank">《儿童个人信息保护规则》</a>
+                <a href="rules.html" target="_blank">《社区公约》</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 聊天主界面 -->
+    <div id="chatApp">
+        <div class="top-bar">
+            <div class="brand">
+                ✦ <span>星迹</span><span class="desktop-only" style="font-weight:400;color:var(--text-secondary);-webkit-text-fill-color:var(--text-secondary);"> · 聊天室</span>
+            </div>
+            <div class="actions">
+                <img id="myAvatar" class="avatar avatar-sm" title="点击更换头像" onclick="uploadAvatar()" style="cursor:pointer;" />
+                <button id="soundToggle" class="icon-btn" onclick="toggleSound()" title="新消息提示音">🔔</button>
+                <button class="icon-btn" onclick="toggleTheme()" title="切换主题">🌓</button>
+                <button class="btn btn-secondary" onclick="logout()" style="padding:6px 16px;font-size:0.8rem;">退出</button>
+            </div>
+        </div>
+        <div class="main-area">
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-header">📋 聊天室</div>
+                <div class="room-list" id="roomList"></div>
+                <button class="create-room-btn" onclick="showCreateRoom()">＋ 创建房间</button>
+            </div>
+            <div class="chat-area" id="chatArea">
+                <div class="chat-header">
+                    <span class="room-name" id="chatRoomName">🏠 大厅</span>
+                    <span class="room-meta" id="chatRoomMeta">✨ 在线</span>
+                </div>
+                <div class="member-list" id="memberList"></div>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="🔍 搜索消息关键词…" />
+                    <button class="icon-btn" onclick="searchMessages()" title="搜索">🔍</button>
+                    <button class="icon-btn" onclick="clearSearch()" title="清除">✕</button>
+                </div>
+                <div id="chatMessages">
+                    <div class="load-more-trigger" id="loadMoreTrigger" onclick="loadMoreMessages()">⬆ 点击加载更早消息</div>
+                </div>
+                <div class="input-area">
+                    <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip,.rar,.7z" style="display:none;" />
+                    <button class="icon-btn" onclick="document.getElementById('fileInput').click()" title="发送文件">📎</button>
+                    <button class="icon-btn" onclick="toggleEmojiPanel()" title="表情">😊</button>
+                    <button class="icon-btn" onclick="startCallFromInput()" title="视频通话">📞</button>
+                    <input type="text" id="messageInput" placeholder="输入消息… ( @ai 召唤AI )" autocomplete="off" />
+                    <button class="send-btn" onclick="sendMessage()">➤</button>
+                </div>
+                <div id="emojiPanel">
+                    <div id="emojiGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 视频通话 -->
+    <div id="videoCallModal">
+        <div class="video-grid">
+            <video id="localVideo" autoplay muted></video>
+            <video id="remoteVideo" autoplay></video>
+        </div>
+        <div class="video-controls">
+            <button class="btn btn-secondary" onclick="hangUp()">📴 挂断</button>
+        </div>
+    </div>
+
+    <!-- 个人资料 -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-content" id="profileContent">
+            <div class="modal-body"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('profileModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 私聊 -->
+    <div class="modal-overlay" id="privateChatModal">
+        <div class="modal-content" id="privateChatContent">
+            <h3 id="privateChatTitle">💬 私聊</h3>
+            <div class="modal-body private-msgs" id="privateChatMessages"></div>
+            <div class="private-input">
+                <input type="text" id="privateChatInput" placeholder="输入私聊消息…" />
+                <button class="btn btn-primary" onclick="sendPrivateMessage()" style="padding:10px 18px;border-radius:var(--radius-full);">发送</button>
+            </div>
+            <div class="modal-actions" style="margin-top:10px;">
+                <button class="btn btn-secondary" onclick="closeModal('privateChatModal')" style="flex:1;">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 星迹 StarryChat - 完整 JavaScript
+        // 包含：配置、工具函数、认证、路由、消息、实时订阅、
+        //       房间管理、AI集成、视频通话、表情、搜索、主题等
+        // ============================================================
+
+        // ===== 配置 =====
+        const SUPABASE_URL = 'https://nzgnqwcsgnqjffydnxtz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_igxAfIfC7M4n6SYJKkqQRA_Cj2V0ba9';
+        const API_NINJAS_KEY = '10dxzeBAfkw8GU2FqFi7aPPpLbODvq5r5cANzCEV';
+        const KIMI_API_KEY = 'sk-dQSot7cOHnhgSfehTEIPBlNz22OjcPULqLR61ThIqLM9J5hR';
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ===== 全局状态 =====
+        let currentUser = { username: '', avatar: '', signature: '' };
+        let currentRoom = '大厅';
+        let soundEnabled = true;
+        let wsChannels = [];
+        let privateTarget = '';
+        let localStream = null;
+        let pc = null;
+        let callTarget = '';
+        let isAdmin = false;
+
+        // 分页
+        let currentPage = 0;
+        const PAGE_SIZE = 30;
+        let isLoadingMore = false;
+        let hasMoreMessages = true;
+        let oldestMessageCreatedAt = null;
+
+        // 定时器和订阅
+        let banCheckInterval = null;
+        let banSubscription = null;
+        let maintenanceCheckInterval = null;
+        let roomSubscription = null;
+        let currentRoomList = [];
+        let loadMoreObserver = null;
+        let memberRefreshInterval = null;
+        let globalChannel = null;
+        let roomOwners = {};
+
+        // 表情
+        const emojis = ['😀', '😂', '😍', '😢', '😡', '👍', '👎', '🎉', '✨', '🔥', '❤️', '💔', '😭', '🤔', '😎', '😴', '😇', '🤣', '😱', '🥰', '🤩',
+            '😜', '😤', '🥺', '🧐', '🤗', '😺', '🙈', '💀', '👀'
+        ];
+
+        // ============================================================
+        // 工具函数
+        // ============================================================
+        function sha256(str) { return CryptoJS.SHA256(str).toString(); }
+        const FIXED_SALT = 'StarryChat_2024';
+
+        // ===== 修复：密码验证支持 6 种哈希方式 =====
+        function verifyPassword(inputPassword, storedHash) {
+            if (!inputPassword || !storedHash) return false;
+            // 1. 固定盐：StarryChat_2024 + password + StarryChat_2024
+            if (sha256(FIXED_SALT + inputPassword + FIXED_SALT) === storedHash) return true;
+            // 2. 无盐：sha256(password)
+            if (sha256(inputPassword) === storedHash) return true;
+            // 3. 空盐：sha256('' + password + '')
+            if (sha256('' + inputPassword + '') === storedHash) return true;
+            // 4. 盐前缀：StarryChat_2024 + password
+            if (sha256(FIXED_SALT + inputPassword) === storedHash) return true;
+            // 5. 盐后缀：password + StarryChat_2024
+            if (sha256(inputPassword + FIXED_SALT) === storedHash) return true;
+            // 6. 双重哈希：sha256(sha256(password))
+            if (sha256(sha256(inputPassword)) === storedHash) return true;
+            return false;
+        }
+
+        function hashPassword(password) { return sha256(FIXED_SALT + password + FIXED_SALT); }
+
+        function UUID() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                try { return crypto.randomUUID(); } catch (_) {}
+            }
+            return Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+        }
+
+        function getDeviceFingerprint() {
+            const components = [navigator.userAgent || '', navigator.language || '', screen.width || '', screen.height || ''];
+            return sha256(components.join('|')).substring(0, 16);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function isValidUrl(url) {
+            try { const p = new URL(url); return p.protocol === 'http:' || p.protocol === 'https:'; } catch (_) { return false; }
+        }
+
+        function safeLinkify(text) {
+            if (!text) return '';
+            let escaped = escapeHtml(text);
+            const urlRegex = /(https?:\/\/[^\s<]+)/g;
+            return escaped.replace(urlRegex, function(match) { return `<a href="${match}" target="_blank" class="link-safe">${match}</a>`; });
+        }
+
+        function playSound() {
+            if (!soundEnabled) return;
+            try {
+                if (!window._audioCtx) window._audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                const ctx = window._audioCtx;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.frequency.value = 880;
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+                osc.start(); osc.stop(ctx.currentTime + 0.12);
+            } catch (_) {}
+        }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('show'); }
+        function closeModal(id) { const el = document.getElementById(id); el.classList.remove('active'); el.style.display = 'none'; }
+        function openModal(id) { const el = document.getElementById(id); el.style.display = 'flex'; requestAnimationFrame(() => el.classList.add('active')); }
+
+        // ===== 修复：头像渲染，处理特殊字符、AI助手、系统 =====
+        function getAvatarUrl(username, avatar) {
+            if (avatar) return avatar;
+            if (username === '🛡️ 系统') {
+                return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23f39c12"/%3E%3Ctext x="50" y="72" font-size="50" text-anchor="middle" fill="white" font-family="system-ui"%3E🛡️%3C/text%3E%3C/svg%3E';
+            }
+            if (username === '🤖 AI助手') {
+                return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%236C5CE7"/%3E%3Ctext x="50" y="72" font-size="50" text-anchor="middle" fill="white" font-family="system-ui"%3E🤖%3C/text%3E%3C/svg%3E';
+            }
+            const safeName = (username || '?').trim();
+            // 尝试找到第一个字母、数字或中文
+            let firstChar = '?';
+            const match = safeName.match(/[A-Za-z0-9\u4e00-\u9fa5]/);
+            if (match) firstChar = match[0];
+            else if (safeName.length > 0) firstChar = safeName[0];
+            const upper = firstChar.toUpperCase();
+            const safeInitial = upper.replace(/[^A-Za-z0-9\u4e00-\u9fa5]/g, '') || '?';
+            // 对中文等字符做 URI 编码保护
+            const encodedChar = encodeURIComponent(safeInitial);
+            return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%236C5CE7'/%3E%3Cstop offset='100%25' stop-color='%2300B894'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='50' fill='url(%23a)'/%3E%3Ctext x='50' y='68' font-size='44' text-anchor='middle' fill='white' font-family='system-ui' font-weight='bold'%3E${encodedChar}%3C/text%3E%3C/svg%3E`;
+        }
+
+        function formatTime(ts) {
+            if (!ts) return '';
+            try { return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; }
+        }
+        function formatFullTime(ts) {
+            if (!ts) return '-';
+            try { return new Date(ts).toLocaleString('zh-CN', { hour12: false }); } catch (_) { return '-'; }
+        }
+
+        // ============================================================
+        // 欢迎页打字机
+        // ============================================================
+        const welcomeTexts = ['欢迎来到 StarryChat ✦', '连接每一颗星星', '开启你的聊天之旅', '✨ 星迹有你更精彩'];
+        const welcomeEmojis = ['👏', '🎉', '🥳', '🤗', '🎊', '✨', '🌟', '💫'];
+
+        function runTypeWriter() {
+            const textEl = document.getElementById('typewriterText');
+            const emojiEl = document.getElementById('typewriterEmoji');
+            let textIndex = 0;
+            emojiEl.textContent = welcomeEmojis[0];
+            function typeWithText(text) {
+                let idx = 0; textEl.textContent = '';
+                function step() {
+                    if (idx < text.length) {
+                        textEl.textContent += text.charAt(idx); idx++;
+                        setTimeout(step, 70 + Math.random() * 30);
+                    } else {
+                        setTimeout(() => {
+                            textIndex = (textIndex + 1) % welcomeTexts.length;
+                            emojiEl.textContent = welcomeEmojis[textIndex % welcomeEmojis.length];
+                            typeWithText(welcomeTexts[textIndex]);
+                        }, 1800);
+                    }
+                }
+                step();
+            }
+            typeWithText(welcomeTexts[0]);
+        }
+
+        // ============================================================
+        // 路由检测（修复：正确解析 URL，支持 /starrychat/ 前缀）
+        // ============================================================
+        function detectRoomFromURL() {
+            // 优先从 search 参数读取 path（404.html 重定向带来）
+            const searchParams = new URLSearchParams(location.search);
+            let path = searchParams.get('path') || '';
+            if (path) {
+                path = path.replace(/^\//, '');
+                if (path.startsWith('starrychat/')) path = path.substring('starrychat/'.length);
+                const parts = path.split('/').filter(p => p);
+                if (parts.length > 0) {
+                    const roomName = decodeURIComponent(parts[0]);
+                    if (roomName && roomName !== 'index.html' && !roomName.includes('.')) return roomName;
+                }
+            }
+            // 从 pathname 解析
+            let pathname = window.location.pathname;
+            if (pathname.startsWith('/starrychat/')) pathname = pathname.substring('/starrychat/'.length);
+            else if (pathname.startsWith('/')) pathname = pathname.substring(1);
+            pathname = pathname.replace(/\/$/, '');
+            const parts2 = pathname.split('/').filter(p => p && p !== 'starrychat');
+            if (parts2.length > 0) {
+                const roomName2 = decodeURIComponent(parts2[0]);
+                if (roomName2 && roomName2 !== 'index.html' && !roomName2.includes('.')) return roomName2;
+            }
+            return null;
+        }
+
+        // ============================================================
+        // 个性化签名
+        // ============================================================
+        function showSignaturePage() {
+            document.getElementById('welcomePage').style.display = 'none';
+            document.getElementById('signaturePage').style.display = 'flex';
+            if (currentUser.username) {
+                document.getElementById('signatureInput').value = currentUser.signature || '';
+                if (currentUser.avatar) document.getElementById('sigAvatarPreview').src = currentUser.avatar;
+            }
+        }
+
+        document.getElementById('sigAvatarInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { alert('头像请小于 2MB'); return; }
+            const reader = new FileReader();
+            reader.onload = async function(ev) {
+                const base64 = ev.target.result;
+                const isNsfw = await isImageNSFW(base64);
+                if (isNsfw) { alert('🛡️ 头像审核未通过'); return; }
+                document.getElementById('sigAvatarPreview').src = base64;
+                currentUser._tempAvatar = base64;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        async function saveSignatureAndEnter() {
+            const sig = document.getElementById('signatureInput').value.trim();
+            if (currentUser.username) {
+                const updates = { signature: sig };
+                if (currentUser._tempAvatar) updates.avatar = currentUser._tempAvatar;
+                await db.from('users').update(updates).eq('username', currentUser.username);
+                if (updates.avatar) currentUser.avatar = updates.avatar;
+                currentUser.signature = sig;
+            }
+            document.getElementById('signaturePage').style.display = 'none';
+            if (currentUser.username) enterChat();
+            else document.getElementById('authPage').style.display = 'flex';
+        }
+
+        function skipToAuth() {
+            document.getElementById('welcomePage').style.display = 'none';
+            document.getElementById('authPage').style.display = 'flex';
+        }
+
+        // ============================================================
+        // 文本审核
+        // ============================================================
+        const blockedWords = /色情|强奸|暴力|赌博|赌场|彩票|porn|fuck|dick|pussy|asshole|gambling|约炮|裸聊|小姐|上门|包夜|外围|迷奸|迷药|吸毒|大麻/gi;
+        function containsBlockedText(text) { blockedWords.lastIndex = 0; return blockedWords.test(text); }
+
+        // ============================================================
+        // AI 图片审核
+        // ============================================================
+        async function isImageNSFW(base64Image) {
+            try {
+                const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+                const formData = new FormData();
+                formData.append('image', base64Data);
+                const res = await fetch('https://api.api-ninjas.com/v1/nsfwimage', {
+                    method: 'POST', headers: { 'X-Api-Key': API_NINJAS_KEY }, body: formData
+                });
+                if (!res.ok) return false;
+                const data = await res.json();
+                return Math.max(data.porn || 0, data.hentai || 0, data.sexy || 0) > 0.7;
+            } catch (e) { console.warn('AI 图片审核失败', e); return false; }
+        }
+
+        // ============================================================
+        // 登录 / 注册（带 loading 动画）
+        // ============================================================
+        function showRegister() { document.getElementById('loginBox').style.display = 'none'; document.getElementById('regBox').style.display = 'block'; }
+        function showLogin() { document.getElementById('regBox').style.display = 'none'; document.getElementById('loginBox').style.display = 'block'; }
+
+        function checkMaintenance() {
+            try { if (localStorage.getItem('maintenance_mode') === 'true') { alert('🔧 系统正在维护中，请稍后再来'); return true; } } catch (_) {}
+            return false;
+        }
+
+        async function login() {
+            if (checkMaintenance()) return;
+            const u = document.getElementById('loginUser').value.trim();
+            const p = document.getElementById('loginPassword').value;
+            const remember = document.getElementById('rememberMe').checked;
+            const btn = document.getElementById('loginBtn');
+            const errEl = document.getElementById('loginError');
+            if (!u || !p) { errEl.innerText = '用户名或密码错误'; return; }
+
+            btn.innerHTML = '<span class="spinner"></span> 登录中...';
+            btn.disabled = true;
+            errEl.innerText = '';
+
+            try {
+                const { data, error } = await db.from('users')
+                    .select('username, avatar, signature, password_hash, is_banned, ban_reason')
+                    .eq('username', u).single();
+
+                if (error || !data) { errEl.innerText = '用户名或密码错误'; return; }
+                if (data.is_banned) { errEl.innerText = '账号已被封禁：' + (data.ban_reason || '违规操作'); return; }
+                if (!verifyPassword(p, data.password_hash)) { errEl.innerText = '用户名或密码错误'; return; }
+
+                currentUser = { username: data.username, avatar: data.avatar || '', signature: data.signature || '' };
+                isAdmin = data.username === 'hzx7891';
+
+                // 记录日志
+                try {
+                    const deviceInfo = navigator.userAgent || '未知设备';
+                    await db.from('login_logs').insert({ username: u, device: deviceInfo, created_at: new Date().toISOString() });
+                    await db.from('users').update({ last_login_at: new Date().toISOString(), last_device: deviceInfo }).eq('username', u);
+                } catch (logErr) { console.warn('日志记录失败', logErr); }
+
+                // 记住我
+                if (remember) {
+                    try {
+                        const token = UUID();
+                        const deviceFingerprint = getDeviceFingerprint();
+                        const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+                        await db.from('users').update({
+                            remember_token: token, remember_expires: expires, remember_device: deviceFingerprint
+                        }).eq('username', u);
+                        localStorage.setItem('starry_remember', token);
+                        localStorage.setItem('starry_device', deviceFingerprint);
+                    } catch (tokenErr) {
+                        console.warn('记住我写入失败', tokenErr);
+                        localStorage.removeItem('starry_remember');
+                        localStorage.removeItem('starry_device');
+                    }
+                } else {
+                    localStorage.removeItem('starry_remember');
+                    localStorage.removeItem('starry_device');
+                    await db.from('users').update({ remember_token: null, remember_expires: null }).eq('username', u);
+                }
+
+                if (!currentUser.signature && !currentUser.avatar) { showSignaturePage(); return; }
+                enterChat();
+            } catch (err) {
+                errEl.innerText = '网络错误，请重试';
+                console.error(err);
+            } finally {
+                btn.innerHTML = '登录';
+                btn.disabled = false;
+            }
+        }
+
+        async function register() {
+            if (checkMaintenance()) return;
+            const u = document.getElementById('regUsername').value.trim();
+            const p = document.getElementById('regPassword').value;
+            const btn = document.getElementById('regBtn');
+            const errEl = document.getElementById('regError');
+            if (!u || !p) { errEl.innerText = '请填写完整信息'; return; }
+            if (u.length < 2) { errEl.innerText = '用户名至少2个字符'; return; }
+            if (p.length < 4) { errEl.innerText = '密码至少4个字符'; return; }
+
+            btn.innerHTML = '<span class="spinner"></span> 注册中...';
+            btn.disabled = true;
+            errEl.innerText = '';
+
+            try {
+                const { data: existing } = await db.from('users').select('username').eq('username', u).single();
+                if (existing) { errEl.innerText = '用户名已存在'; return; }
+                const hashedPassword = hashPassword(p);
+                await db.from('users').insert({ username: u, password_hash: hashedPassword, avatar: '', signature: '', is_banned: false });
+                alert('🎉 注册成功！请登录');
+                showLogin();
+                document.getElementById('loginUser').value = u;
+                document.getElementById('loginPassword').value = '';
+            } catch (err) {
+                errEl.innerText = '注册失败，请重试';
+                console.error(err);
+            } finally {
+                btn.innerHTML = '注册';
+                btn.disabled = false;
+            }
+        }
+
+        // ===== 修复：记住我自动登录，放宽设备检查 =====
+        async function autoLogin() {
+            if (checkMaintenance()) {
+                document.getElementById('welcomePage').style.display = 'flex';
+                runTypeWriter();
+                return;
+            }
+            const savedToken = localStorage.getItem('starry_remember');
+            if (savedToken) {
+                try {
+                    const { data, error } = await db.from('users')
+                        .select('username, avatar, signature, remember_expires, remember_device, is_banned')
+                        .eq('remember_token', savedToken).single();
+                    if (data && !error && data.remember_expires && new Date(data.remember_expires).getTime() > Date.now()) {
+                        const savedDevice = localStorage.getItem('starry_device');
+                        // 只在两个值都存在且不匹配时拒绝
+                        if (data.remember_device && savedDevice && data.remember_device !== savedDevice) {
+                            localStorage.removeItem('starry_remember');
+                            localStorage.removeItem('starry_device');
+                            document.getElementById('welcomePage').style.display = 'flex';
+                            runTypeWriter();
+                            return;
+                        }
+                        if (data.is_banned) {
+                            localStorage.removeItem('starry_remember');
+                            localStorage.removeItem('starry_device');
+                            alert('⛔ 账号已被封禁');
+                            document.getElementById('welcomePage').style.display = 'flex';
+                            runTypeWriter();
+                            return;
+                        }
+                        currentUser = { username: data.username, avatar: data.avatar || '', signature: data.signature || '' };
+                        isAdmin = data.username === 'hzx7891';
+                        if (!currentUser.signature && !currentUser.avatar) { showSignaturePage(); return; }
+                        enterChat();
+                        return;
+                    }
+                } catch (_) {}
+                localStorage.removeItem('starry_remember');
+                localStorage.removeItem('starry_device');
+            }
+            document.getElementById('welcomePage').style.display = 'flex';
+            runTypeWriter();
+        }
+
+        // ============================================================
+        // 进入聊天（修复：正确初始化所有模块）
+        // ============================================================
+        function enterChat() {
+            document.getElementById('authPage').style.display = 'none';
+            document.getElementById('welcomePage').style.display = 'none';
+            document.getElementById('signaturePage').style.display = 'none';
+            document.getElementById('chatApp').style.display = 'flex';
+
+            const avatarUrl = getAvatarUrl(currentUser.username, currentUser.avatar);
+            document.getElementById('myAvatar').src = avatarUrl;
+
+            const roomFromURL = detectRoomFromURL();
+            const targetRoom = roomFromURL || '大厅';
+            checkAndSwitchRoom(targetRoom);
+
+            startBanMonitoring();
+            startMaintenanceMonitoring();
+            setupGlobalChannel();
+            startMemberRefresh();
+            subscribeRooms();
+
+            setTimeout(() => { document.getElementById('messageInput').focus(); }, 300);
+        }
+
+        // ===== 修复：URL 路由，固定 /starrychat/ 前缀 =====
+        async function checkAndSwitchRoom(roomName) {
+            try {
+                const { data } = await db.from('messages').select('room').eq('room', roomName).limit(1);
+                if (data && data.length > 0) {
+                    currentRoom = roomName;
+                    loadRooms();
+                    await loadMessages(roomName, true);
+                    subscribeToMessages();
+                    subscribePrivateMessages();
+                    subscribeCalls();
+                    updateMemberList();
+
+                    document.getElementById('chatRoomName').textContent = roomName === '大厅' ? '🏠 大厅' : '🔒 ' + roomName;
+
+                    // 更新 URL：使用 /starrychat/ 前缀
+                    const basePath = '/starrychat';
+                    const newUrl = roomName !== '大厅' ? basePath + '/' + encodeURIComponent(roomName) : basePath + '/';
+                    window.history.pushState({ room: roomName }, '', newUrl);
+
+                    document.querySelectorAll('.room-item').forEach(el => {
+                        el.classList.toggle('active', el.textContent.includes(roomName));
+                    });
+
+                    // 清除残留的 path 参数
+                    const url = new URL(window.location);
+                    if (url.searchParams.has('path')) {
+                        url.searchParams.delete('path');
+                        window.history.replaceState({}, '', url.toString());
+                    }
+                } else {
+                    document.getElementById('chatMessages').innerHTML = `
+                        <div class="room-not-found">
+                            <div class="icon">🌌</div>
+                            <h2>房间不存在</h2>
+                            <p>房间 "${escapeHtml(roomName)}" 还没被创建</p>
+                            <button class="btn btn-primary" onclick="checkAndSwitchRoom('大厅')">返回大厅</button>
+                        </div>
+                    `;
+                    document.getElementById('chatRoomName').textContent = '❌ 未找到';
+                    loadRooms();
+                    setTimeout(() => { checkAndSwitchRoom('大厅'); }, 3000);
+                }
+            } catch (err) {
+                console.error('切换房间失败', err);
+            }
+        }
+
+        // ============================================================
+        // 监控和订阅
+        // ============================================================
+        function stopBanMonitoring() {
+            if (banCheckInterval) { clearInterval(banCheckInterval); banCheckInterval = null; }
+            if (banSubscription) { try { db.removeChannel(banSubscription); } catch (_) {} banSubscription = null; }
+        }
+        function stopMaintenanceMonitoring() {
+            if (maintenanceCheckInterval) { clearInterval(maintenanceCheckInterval); maintenanceCheckInterval = null; }
+        }
+        function startMaintenanceMonitoring() {
+            stopMaintenanceMonitoring();
+            maintenanceCheckInterval = setInterval(() => {
+                try { if (localStorage.getItem('maintenance_mode') === 'true') { alert('🔧 系统已进入维护模式，即将退出'); logout(); } } catch (_) {}
+            }, 10000);
+        }
+        function startBanMonitoring() {
+            stopBanMonitoring();
+            banCheckInterval = setInterval(async () => {
+                try {
+                    const { data } = await db.from('users').select('is_banned').eq('username', currentUser.username).single();
+                    if (data && data.is_banned) { alert('⛔ 你的账号已被封禁'); logout(); }
+                } catch (_) {}
+            }, 7891);
+            banSubscription = db.channel('user-ban-' + currentUser.username)
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users', filter: 'username=eq.' + currentUser.username }, payload => {
+                    if (payload.new && payload.new.is_banned) { alert('⛔ 你的账号已被封禁'); logout(); }
+                }).subscribe();
+        }
+
+        function subscribeRooms() {
+            if (roomSubscription) { try { db.removeChannel(roomSubscription); } catch (_) {} }
+            roomSubscription = db.channel('room-list-refresh')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                    const newRoom = payload.new.room;
+                    if (newRoom && !currentRoomList.includes(newRoom)) {
+                        currentRoomList.push(newRoom);
+                        loadRooms();
+                    }
+                })
+                .subscribe();
+        }
+
+        // ===== 修复：删除房间广播 =====
+        function setupGlobalChannel() {
+            if (globalChannel) { try { db.removeChannel(globalChannel); } catch (_) {} }
+            globalChannel = db.channel('global-updates');
+            globalChannel
+                .on('broadcast', { event: 'room_deleted' }, (payload) => {
+                    if (payload.room) {
+                        loadRooms();
+                        if (currentRoom === payload.room) {
+                            checkAndSwitchRoom('大厅');
+                        }
+                    }
+                })
+                .subscribe();
+        }
+
+        // ===== 修复：成员刷新 30秒 =====
+        function startMemberRefresh() {
+            if (memberRefreshInterval) clearInterval(memberRefreshInterval);
+            memberRefreshInterval = setInterval(() => { updateMemberList(); }, 30000);
+        }
+
+        function logout() {
+            stopBanMonitoring();
+            stopMaintenanceMonitoring();
+            if (memberRefreshInterval) { clearInterval(memberRefreshInterval); memberRefreshInterval = null; }
+            if (globalChannel) { try { db.removeChannel(globalChannel); } catch (_) {} globalChannel = null; }
+            if (roomSubscription) { try { db.removeChannel(roomSubscription); } catch (_) {} roomSubscription = null; }
+            hangUp();
+            currentUser = { username: '', avatar: '', signature: '' };
+            isAdmin = false;
+            localStorage.removeItem('starry_remember');
+            localStorage.removeItem('starry_device');
+            document.getElementById('chatApp').style.display = 'none';
+            document.getElementById('authPage').style.display = 'flex';
+            wsChannels.forEach(ch => { try { db.removeChannel(ch); } catch (_) {} });
+            wsChannels = [];
+            if (pc) { pc.close(); pc = null; }
+            if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+            document.getElementById('videoCallModal').classList.remove('active');
+            document.getElementById('videoCallModal').style.display = 'none';
+            document.getElementById('remoteVideo').srcObject = null;
+            document.getElementById('localVideo').srcObject = null;
+            currentPage = 0;
+            hasMoreMessages = true;
+            oldestMessageCreatedAt = null;
+        }
+
+        // ============================================================
+        // 房间管理
+        // ============================================================
+        async function loadRooms() {
+            const list = document.getElementById('roomList');
+            let rooms = ['大厅'];
+            const { data } = await db.from('messages').select('room, room_owner').order('created_at', { ascending: false }).limit(1000);
+            if (data) {
+                const roomSet = new Set();
+                data.forEach(m => { if (m.room) roomSet.add(m.room); if (m.room && m.room_owner) roomOwners[m.room] = m.room_owner; });
+                roomSet.forEach(r => { if (r !== '大厅') rooms.push(r); });
+            }
+            currentRoomList = rooms;
+            list.innerHTML = '';
+            rooms.forEach(room => {
+                const div = document.createElement('div');
+                div.className = 'room-item' + (room === currentRoom ? ' active' : '');
+                const isOwner = room !== '大厅' && roomOwners[room] === currentUser.username;
+                const ownerLabel = isOwner ? ' 👑' : '';
+                div.innerHTML = `
+                    <span>${room === '大厅' ? '🏠' : '🔒'} ${escapeHtml(room)}${ownerLabel}</span>
+                    ${room !== '大厅' ? `<span class="room-actions">${isOwner || isAdmin ? `<button class="delete-room-btn" data-room="${escapeHtml(room)}" title="删除房间">✕</button>` : ''}</span>` : ''}
+                `;
+                const deleteBtn = div.querySelector('.delete-room-btn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', function(e) { e.stopPropagation(); deleteRoom(this.dataset.room); });
+                }
+                div.addEventListener('click', function(e) { if (e.target.closest('.room-actions')) return; checkAndSwitchRoom(room); });
+                list.appendChild(div);
+            });
+        }
+
+        function switchRoom(room) { checkAndSwitchRoom(room); }
+
+        async function showCreateRoom() {
+            const name = prompt('🏷️ 输入房间名：');
+            if (name && name.trim()) {
+                const roomName = name.trim();
+                let exists = false;
+                document.querySelectorAll('.room-item').forEach(el => { if (el.textContent.includes(roomName)) exists = true; });
+                if (!exists) {
+                    roomOwners[roomName] = currentUser.username;
+                    await db.from('messages').insert({
+                        room: roomName, username: '🛡️ 系统', content: '✨ 房间 "' + roomName + '" 已创建！欢迎来聊天～',
+                        type: 'text', avatar: '', room_owner: currentUser.username, created_at: new Date().toISOString()
+                    });
+                }
+                checkAndSwitchRoom(roomName);
+            }
+        }
+
+        // ===== 修复：删除房间广播给其他用户 =====
+        async function deleteRoom(room) {
+            if (room === '大厅') { alert('不能删除大厅'); return; }
+            if (!confirm(`确认删除房间 "${room}" 及其所有消息？`)) return;
+            try {
+                await db.from('messages').delete().eq('room', room);
+                // 广播删除事件
+                try {
+                    if (globalChannel) {
+                        await globalChannel.send({ type: 'broadcast', event: 'room_deleted', payload: { room: room } });
+                    }
+                } catch (broadcastErr) { console.warn('广播失败', broadcastErr); }
+                if (currentRoom === room) {
+                    checkAndSwitchRoom('大厅');
+                }
+                alert('✅ 房间已删除');
+                delete roomOwners[room];
+                currentRoomList = currentRoomList.filter(r => r !== room);
+                loadRooms();
+            } catch (e) { alert('删除失败: ' + e.message); }
+        }
+
+        // ============================================================
+        // 消息系统（修复：滚动加载、分页正确、trigger 永不隐藏）
+        // ============================================================
+        async function loadMessages(room, reset = true) {
+            if (reset) {
+                currentPage = 0;
+                hasMoreMessages = true;
+                oldestMessageCreatedAt = null;
+                document.getElementById('chatMessages').innerHTML = '';
+                const trigger = document.createElement('div');
+                trigger.className = 'load-more-trigger';
+                trigger.id = 'loadMoreTrigger';
+                trigger.textContent = '⬆ 滚动加载更早消息';
+                trigger.onclick = loadMoreMessages;
+                trigger.style.display = 'block';
+                document.getElementById('chatMessages').appendChild(trigger);
+                setupScrollLoadMore();
+            }
+
+            const trigger = document.getElementById('loadMoreTrigger');
+            if (trigger && reset) {
+                trigger.innerHTML = '<span class="loader"></span> <span class="loading-text">加载中...</span>';
+                trigger.className = 'load-more-trigger loading';
+                trigger.style.display = 'block';
+            }
+
+            try {
+                const { data, error } = await db.from('messages')
+                    .select('*').eq('room', room).order('created_at', { ascending: false }).limit(PAGE_SIZE);
+                if (error) { console.error('加载消息失败', error); return; }
+
+                if (data && data.length > 0) {
+                    const sorted = data.reverse();
+                    oldestMessageCreatedAt = sorted[0].created_at;
+                    renderMessages(sorted);
+                }
+
+                if (data && data.length < PAGE_SIZE) {
+                    hasMoreMessages = false;
+                    if (trigger) { trigger.textContent = '—— 已加载全部消息 ——'; trigger.className = 'load-more-trigger'; trigger.style.display = 'block'; }
+                } else {
+                    const { data: earlierCheck } = await db.from('messages')
+                        .select('id').eq('room', room).lt('created_at', oldestMessageCreatedAt || new Date().toISOString()).limit(1);
+                    if (earlierCheck && earlierCheck.length > 0) {
+                        hasMoreMessages = true;
+                        if (trigger) { trigger.textContent = '⬆ 滚动加载更早消息'; trigger.className = 'load-more-trigger'; trigger.style.display = 'block'; }
+                    } else {
+                        hasMoreMessages = false;
+                        if (trigger) { trigger.textContent = '—— 已加载全部消息 ——'; trigger.className = 'load-more-trigger'; trigger.style.display = 'block'; }
+                    }
+                }
+                const container = document.getElementById('chatMessages');
+                container.scrollTop = container.scrollHeight;
+            } catch (e) { console.error('加载消息异常', e); }
+        }
+
+        function renderMessages(messages) {
+            const container = document.getElementById('chatMessages');
+            messages.forEach(msg => {
+                const div = document.createElement('div');
+                renderMessageToElement(div, msg);
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function renderMessageToElement(div, msg) {
+            const isSelf = msg.username === currentUser.username;
+            const isSystem = msg.username === '🛡️ 系统';
+            if (isSystem) div.className = 'msg system-msg';
+            else div.className = 'msg ' + (isSelf ? 'self' : 'other');
+
+            const avatarUrl = getAvatarUrl(msg.username, msg.avatar);
+            let contentHtml = '';
+            if (msg.type === 'image') {
+                contentHtml = `<img src="${escapeHtml(msg.content)}" class="msg-img" onclick="window.open('${escapeHtml(msg.content)}','_blank')" />`;
+            } else if (msg.type === 'file') {
+                if (isValidUrl(msg.content)) contentHtml = `<div>📄 <a href="${escapeHtml(msg.content)}" target="_blank" class="link-safe">查看文件</a></div>`;
+                else contentHtml = `<div>📄 文件链接无效</div>`;
+            } else {
+                contentHtml = `<div class="msg-text">${safeLinkify(msg.content)}</div>`;
+            }
+
+            const timeStr = msg.created_at ? formatTime(msg.created_at) : '';
+            const fullDateStr = msg.created_at ? formatFullTime(msg.created_at) : '';
+
+            div.innerHTML = `
+                <img class="avatar" src="${avatarUrl}" data-action="profile" data-username="${escapeHtml(msg.username)}" />
+                <div class="msg-content">
+                  <div class="msg-username">${escapeHtml(msg.username)}</div>
+                  ${contentHtml}
+                  <div class="msg-time">${timeStr}<span class="full-date">${fullDateStr}</span></div>
+                </div>
+                ${!isSystem ? `<div class="msg-actions"><button class="report-btn" data-msgid="${msg.id}" data-username="${escapeHtml(msg.username)}">🚩</button>${isSelf ? `<button class="delete-btn" data-msgid="${msg.id}">✕</button>` : ''}</div>` : ''}
+            `;
+        }
+
+        document.getElementById('chatMessages').addEventListener('click', async function(e) {
+            const target = e.target;
+            if (target.classList.contains('report-btn')) {
+                const msgId = target.dataset.msgid;
+                const username = target.dataset.username;
+                if (msgId && username) {
+                    const reason = prompt('举报原因（选填）：');
+                    if (reason !== null) {
+                        try {
+                            await db.from('reports').insert({ message_id: msgId, reported_user: username, reporter: currentUser.username, reason: reason || '未填写', created_at: new Date().toISOString() });
+                            alert('✅ 举报已提交');
+                        } catch (err) { alert('举报提交失败：' + err.message); }
+                    }
+                }
+                return;
+            }
+            if (target.classList.contains('delete-btn')) {
+                const msgId = target.dataset.msgid;
+                if (msgId && confirm('确认删除这条消息？')) {
+                    try {
+                        await db.from('messages').delete().eq('id', msgId);
+                        const msgEl = target.closest('.msg');
+                        if (msgEl) msgEl.remove();
+                    } catch (e) { alert('删除失败: ' + e.message); }
+                }
+                return;
+            }
+            if (target.classList.contains('avatar') && target.dataset.action === 'profile') {
+                const username = target.dataset.username;
+                if (username) showProfile(username);
+                return;
+            }
+        });
+
+        function renderMessage(msg) {
+            const container = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            renderMessageToElement(div, msg);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ===== 修复：滚动加载使用容器 scroll 事件 =====
+        function setupScrollLoadMore() {
+            const container = document.getElementById('chatMessages');
+            // 移除之前的监听
+            if (window._loadMoreScrollHandler) {
+                container.removeEventListener('scroll', window._loadMoreScrollHandler);
+            }
+            window._loadMoreScrollHandler = function() {
+                if (container.scrollTop < 80 && hasMoreMessages && !isLoadingMore) {
+                    loadMoreMessages();
+                }
+            };
+            container.addEventListener('scroll', window._loadMoreScrollHandler);
+        }
+
+        async function loadMoreMessages() {
+            if (isLoadingMore || !hasMoreMessages) return;
+            isLoadingMore = true;
+            const trigger = document.getElementById('loadMoreTrigger');
+            trigger.innerHTML = '<span class="loader"></span> <span class="loading-text">加载中...</span>';
+            trigger.className = 'load-more-trigger loading';
+            trigger.style.display = 'block';
+
+            try {
+                let query = db.from('messages').select('*').eq('room', currentRoom).order('created_at', { ascending: false }).limit(PAGE_SIZE);
+                if (oldestMessageCreatedAt) query = query.lt('created_at', oldestMessageCreatedAt);
+
+                const { data, error } = await query;
+                if (error) {
+                    isLoadingMore = false;
+                    trigger.textContent = '⬆ 加载失败，点击重试';
+                    trigger.className = 'load-more-trigger';
+                    trigger.style.display = 'block';
+                    return;
+                }
+
+                if (data && data.length > 0) {
+                    const sorted = data.reverse();
+                    oldestMessageCreatedAt = sorted[0].created_at;
+                    const container = document.getElementById('chatMessages');
+                    const triggerEl = document.getElementById('loadMoreTrigger');
+                    const referenceNode = triggerEl.nextElementSibling;
+                    sorted.forEach(msg => {
+                        const div = document.createElement('div');
+                        renderMessageToElement(div, msg);
+                        container.insertBefore(div, referenceNode);
+                    });
+                    if (data.length < PAGE_SIZE) {
+                        hasMoreMessages = false;
+                        trigger.textContent = '—— 已加载全部消息 ——';
+                        trigger.className = 'load-more-trigger';
+                        trigger.style.display = 'block';
+                    } else {
+                        trigger.textContent = '⬆ 滚动加载更早消息';
+                        trigger.className = 'load-more-trigger';
+                        trigger.style.display = 'block';
+                    }
+                } else {
+                    hasMoreMessages = false;
+                    trigger.textContent = '—— 已加载全部消息 ——';
+                    trigger.className = 'load-more-trigger';
+                    trigger.style.display = 'block';
+                }
+            } catch (e) {
+                trigger.textContent = '⬆ 加载失败，点击重试';
+                trigger.className = 'load-more-trigger';
+                trigger.style.display = 'block';
+            }
+            isLoadingMore = false;
+        }
+
+        function subscribeToMessages() {
+            wsChannels = wsChannels.filter(ch => {
+                if (ch.topic && ch.topic.includes('public:messages')) { try { db.removeChannel(ch); } catch (_) {} return false; }
+                return true;
+            });
+
+            const ch = db.channel('public:messages-' + currentRoom)
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'room=eq.' + currentRoom }, payload => {
+                    const msg = payload.new;
+                    if (msg.room === currentRoom) {
+                        renderMessage(msg);
+                        if (msg.username !== currentUser.username) playSound();
+                    }
+                    if (msg.room && !currentRoomList.includes(msg.room)) {
+                        currentRoomList.push(msg.room);
+                        loadRooms();
+                    }
+                })
+                .subscribe();
+            wsChannels.push(ch);
+        }
+
+        // ============================================================
+        // 发送消息（修复：AI 入库、上下文）
+        // ============================================================
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text || !currentUser.username) return;
+
+            try {
+                const { data: userData } = await db.from('users').select('is_banned').eq('username', currentUser.username).single();
+                if (userData && userData.is_banned) { alert('⛔ 你已被封禁，无法发送消息'); logout(); return; }
+            } catch (_) { alert('⛔ 网络异常，请稍后再试'); return; }
+
+            if (containsBlockedText(text)) { alert('⚠️ 消息包含违规内容，无法发送。'); return; }
+            if (text.length > 10000) { alert('⚠️ 消息过长，请控制在10000字符以内'); return; }
+
+            if (text.startsWith('@ai ')) {
+                const prompt = text.slice(4);
+                input.value = '';
+
+                // 获取最近 20 条消息作为上下文
+                let context = '';
+                try {
+                    const { data: recentMsgs } = await db.from('messages')
+                        .select('username, content')
+                        .eq('room', currentRoom)
+                        .order('created_at', { ascending: false })
+                        .limit(20);
+                    if (recentMsgs) {
+                        context = recentMsgs.reverse().map(m => `${m.username}: ${m.content}`).join('\n');
+                    }
+                } catch (e) { console.warn('获取上下文失败', e); }
+
+                const reply = await askAI(prompt, context);
+
+                // AI 回复入库
+                try {
+                    await db.from('messages').insert({
+                        room: currentRoom,
+                        username: '🤖 AI助手',
+                        content: reply,
+                        type: 'text',
+                        avatar: '',
+                        room_owner: currentRoom !== '大厅' ? roomOwners[currentRoom] || currentUser.username : null,
+                        created_at: new Date().toISOString()
+                    });
+                } catch (insertErr) { console.warn('AI回复入库失败', insertErr); }
+
+                input.focus();
+                return;
+            }
+
+            try {
+                const { error } = await db.from('messages').insert({
+                    room: currentRoom,
+                    username: currentUser.username,
+                    content: text,
+                    type: 'text',
+                    avatar: currentUser.avatar || '',
+                    room_owner: currentRoom !== '大厅' ? roomOwners[currentRoom] || currentUser.username : null
+                });
+                if (error) throw error;
+                input.value = '';
+                input.focus();
+            } catch (err) { alert('发送失败：' + err.message); }
+        }
+
+        // ============================================================
+        // AI 集成（Kimi 优先，Hugging Face 备选，含上下文）
+        // ============================================================
+        async function askAI(prompt, context) {
+            const truncatedContext = context ? context.substring(0, 1000) : '';
+            const fullMsg = `你是星迹聊天室的智能助手"星迹AI"。当前聊天室：${currentRoom}\n以下是最近聊天记录：\n${truncatedContext}\n\n用户 ${currentUser.username} 说：${prompt}\n请用简洁友好的中文回答。`;
+
+            // 1. Kimi
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000);
+                const res = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + KIMI_API_KEY },
+                    body: JSON.stringify({ model: 'moonshot-v1-8k', messages: [{ role: 'user', content: fullMsg }], temperature: 0.7 }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeout);
+                if (!res.ok) throw new Error('Kimi API error');
+                const data = await res.json();
+                const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : '';
+                if (reply) return reply;
+            } catch (e) { console.warn('Kimi API 失败，尝试 Hugging Face'); }
+
+            // 2. Hugging Face
+            const hfToken = localStorage.getItem('hf_token');
+            if (hfToken) {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 15000);
+                    const res = await fetch('https://api-inference.huggingface.co/models/Qwen/Qwen2.5-7B-Instruct', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + hfToken, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ inputs: fullMsg }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+                    if (!res.ok) throw new Error('HF API error');
+                    const data = await res.json();
+                    if (data && data.generated_text) {
+                        return data.generated_text.replace(fullMsg, '').trim() || '（AI 返回为空）';
+                    }
+                } catch (e) { console.warn('Hugging Face 调用失败'); }
+            }
+
+            // 3. 兜底
+            return '🌙 所有 AI 服务暂时不可用，请稍后再试。';
+        }
+
+        // ============================================================
+        // 搜索
+        // ============================================================
+        function searchMessages() {
+            const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!keyword) return;
+            loadMessages(currentRoom, true);
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('chatMessages').innerHTML = '';
+            currentPage = 0;
+            hasMoreMessages = true;
+            oldestMessageCreatedAt = null;
+            const trigger = document.createElement('div');
+            trigger.className = 'load-more-trigger';
+            trigger.id = 'loadMoreTrigger';
+            trigger.textContent = '⬆ 滚动加载更早消息';
+            trigger.onclick = loadMoreMessages;
+            trigger.style.display = 'block';
+            document.getElementById('chatMessages').appendChild(trigger);
+            setupScrollLoadMore();
+            loadMessages(currentRoom, true);
+        }
+
+        // ============================================================
+        // 文件上传
+        // ============================================================
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 20 * 1024 * 1024) { alert('文件过大，请选择小于 20MB 的文件'); e.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const base64 = ev.target.result;
+                const type = file.type.startsWith('image/') ? 'image' : 'file';
+                if (type === 'image') {
+                    const isNsfw = await isImageNSFW(base64);
+                    if (isNsfw) { alert('🛡️ 图片审核未通过，可能包含不适宜内容。'); return; }
+                }
+                try {
+                    await db.from('messages').insert({
+                        room: currentRoom, username: currentUser.username, content: base64, type: type,
+                        avatar: currentUser.avatar || '', room_owner: currentRoom !== '大厅' ? roomOwners[currentRoom] || currentUser.username : null
+                    });
+                    document.getElementById('messageInput').focus();
+                } catch (err) { alert('文件上传失败：' + err.message); }
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        });
+
+        function uploadAvatar() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.style.display = 'none';
+            document.body.appendChild(input);
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 2 * 1024 * 1024) { alert('头像图片请小于 2MB'); return; }
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const base64 = ev.target.result;
+                    const isNsfw = await isImageNSFW(base64);
+                    if (isNsfw) { alert('🛡️ 头像审核未通过，请更换图片。'); return; }
+                    currentUser.avatar = base64;
+                    await db.from('users').update({ avatar: currentUser.avatar }).eq('username', currentUser.username);
+                    document.getElementById('myAvatar').src = base64;
+                    document.getElementById('sigAvatarPreview').src = base64;
+                    updateMemberList();
+                    input.remove();
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        // ============================================================
+        // 成员列表（修复：5分钟窗口 + 30秒刷新 + 点击交互）
+        // ============================================================
+        async function updateMemberList() {
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            const { data } = await db.from('messages')
+                .select('username, avatar')
+                .eq('room', currentRoom)
+                .gte('created_at', fiveMinutesAgo)
+                .order('created_at', { ascending: false })
+                .limit(50);
+            const members = new Map();
+            if (data) { data.forEach(m => { if (!members.has(m.username)) members.set(m.username, m.avatar || ''); }); }
+            if (!members.has(currentUser.username)) members.set(currentUser.username, currentUser.avatar || '');
+
+            const list = document.getElementById('memberList');
+            list.innerHTML = '';
+            members.forEach((avatar, username) => {
+                const tag = document.createElement('span');
+                tag.className = 'member-tag';
+                tag.innerHTML = `<img class="avatar avatar-sm" src="${getAvatarUrl(username, avatar)}" /> ${escapeHtml(username)} <span class="online-dot"></span>`;
+                tag.title = '单击：视频通话 | 双击：私聊';
+                tag.onclick = () => { if (username !== currentUser.username) startCallTo(username); };
+                tag.ondblclick = () => { if (username !== currentUser.username) openPrivateChat(username); };
+                list.appendChild(tag);
+            });
+        }
+
+        // ============================================================
+        // 个人资料
+        // ============================================================
+        async function showProfile(username) {
+            const { data } = await db.from('users').select('username, avatar, signature, is_banned, last_login_at, last_device').eq('username', username).single();
+            if (data) {
+                const isBanned = data.is_banned || false;
+                const { data: recentMsgs } = await db.from('messages').select('content, created_at').eq('username', username).order('created_at', { ascending: false }).limit(5);
+                let recentHtml = '';
+                if (recentMsgs && recentMsgs.length > 0) {
+                    recentHtml = recentMsgs.map(m => `<div style="font-size:0.8rem;color:var(--text-secondary);padding:2px 0;">${escapeHtml(m.content).substring(0,40)} <span style="font-size:0.6rem;color:var(--text-muted);">${formatTime(m.created_at)}</span></div>`).join('');
+                }
+                document.getElementById('profileContent').querySelector('.modal-body').innerHTML = `
+                    <div class="text-center">
+                      <img src="${getAvatarUrl(username, data.avatar)}" class="avatar avatar-lg" style="margin:0 auto 12px;display:block;" />
+                      <h3>${escapeHtml(username)} ${isBanned ? '<span style="background:#e74c3c;color:#fff;font-size:0.6rem;padding:2px 8px;border-radius:999px;margin-left:6px;">已封禁</span>' : ''}</h3>
+                      <p class="text-secondary">${escapeHtml(data.signature || '这个人很懒，什么都没写～')}</p>
+                      <div style="font-size:0.8rem;color:var(--text-muted);margin-top:8px;">
+                        <div>📱 最后登录: ${data.last_login_at ? formatFullTime(data.last_login_at) : '未知'}</div>
+                        <div>📟 设备: ${escapeHtml(data.last_device || '未知')}</div>
+                      </div>
+                      ${recentHtml ? `<div style="margin-top:12px;text-align:left;"><strong style="font-size:0.8rem;color:var(--text-secondary);">最近消息:</strong>${recentHtml}</div>` : ''}
+                      <button class="btn btn-secondary" onclick="closeModal('profileModal')" style="margin-top:16px;">关闭</button>
+                    </div>`;
+                openModal('profileModal');
+            }
+        }
+
+        // ============================================================
+        // 私聊
+        // ============================================================
+        function openPrivateChat(target) {
+            if (target === currentUser.username) return;
+            privateTarget = target;
+            wsChannels = wsChannels.filter(ch => {
+                const chName = ch.topic || ch.channelName || '';
+                if (chName.includes('private_messages')) { try { db.removeChannel(ch); } catch (_) {} return false; }
+                return true;
+            });
+            document.getElementById('privateChatTitle').textContent = '💬 私聊 · ' + target;
+            document.getElementById('privateChatMessages').innerHTML = '';
+            loadPrivateMessages(target);
+            subscribePrivateMessages();
+            openModal('privateChatModal');
+            setTimeout(() => document.getElementById('privateChatInput').focus(), 300);
+        }
+
+        async function loadPrivateMessages(target) {
+            const { data } = await db.from('private_messages').select('*').or(`sender.eq.${currentUser.username},receiver.eq.${currentUser.username}`).order('created_at', { ascending: true });
+            if (data) {
+                const box = document.getElementById('privateChatMessages');
+                box.innerHTML = '';
+                data.filter(m => (m.sender === currentUser.username && m.receiver === target) || (m.sender === target && m.receiver === currentUser.username)).forEach(m => appendPrivateMessage(m, m.sender === currentUser.username));
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        function subscribePrivateMessages() {
+            const ch = db.channel('private_messages-' + currentUser.username + '-' + privateTarget)
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, payload => {
+                    const msg = payload.new;
+                    if ((msg.sender === currentUser.username && msg.receiver === privateTarget) || (msg.sender === privateTarget && msg.receiver === currentUser.username)) {
+                        appendPrivateMessage(msg, msg.sender === currentUser.username);
+                        const box = document.getElementById('privateChatMessages');
+                        if (box) box.scrollTop = box.scrollHeight;
+                        if (msg.sender !== currentUser.username) playSound();
+                    }
+                })
+                .subscribe();
+            wsChannels.push(ch);
+        }
+
+        async function sendPrivateMessage() {
+            const input = document.getElementById('privateChatInput');
+            const text = input.value.trim();
+            if (!text || !privateTarget) return;
+            if (containsBlockedText(text)) { alert('⚠️ 消息包含违规内容，无法发送。'); return; }
+            try {
+                await db.from('private_messages').insert({ sender: currentUser.username, receiver: privateTarget, content: text });
+                input.value = '';
+                input.focus();
+            } catch (err) { alert('私聊发送失败：' + err.message); }
+        }
+
+        function appendPrivateMessage(msg, isSelf) {
+            const box = document.getElementById('privateChatMessages');
+            if (!box) return;
+            const div = document.createElement('div');
+            div.className = 'msg ' + (isSelf ? 'self' : 'other');
+            div.style.maxWidth = '85%';
+            const timeStr = msg.created_at ? formatTime(msg.created_at) : '';
+            const fullDateStr = msg.created_at ? formatFullTime(msg.created_at) : '';
+            div.innerHTML = `
+                <img class="avatar avatar-sm" src="${getAvatarUrl(msg.sender, '')}" />
+                <div class="msg-content">
+                  ${!isSelf ? `<div class="msg-username">${escapeHtml(msg.sender)}</div>` : ''}
+                  <div class="msg-text">${escapeHtml(msg.content)}</div>
+                  <div class="msg-time">${timeStr}<span class="full-date">${fullDateStr}</span></div>
+                </div>`;
+            box.appendChild(div);
+        }
+
+        // ============================================================
+        // 表情面板
+        // ============================================================
+        function toggleEmojiPanel() {
+            const panel = document.getElementById('emojiPanel');
+            if (panel.style.display === 'block') { panel.style.display = 'none'; } else {
+                panel.style.display = 'block';
+                document.getElementById('emojiGrid').innerHTML = emojis.map(e => `<span onclick="insertEmoji('${e}')">${e}</span>`).join('');
+            }
+        }
+
+        function insertEmoji(emoji) {
+            const privateModal = document.getElementById('privateChatModal');
+            const isPrivateOpen = privateModal.classList.contains('active') && privateModal.style.display !== 'none';
+            if (isPrivateOpen) {
+                const privateInput = document.getElementById('privateChatInput');
+                privateInput.value += emoji; privateInput.focus();
+            } else {
+                const mainInput = document.getElementById('messageInput');
+                mainInput.value += emoji; mainInput.focus();
+            }
+        }
+
+        // ============================================================
+        // 视频通话（修复：从成员列表直接发起，不再 prompt）
+        // ============================================================
+        function startCallFromInput() {
+            const target = prompt('📞 输入对方用户名：');
+            if (target && target !== currentUser.username) startCallTo(target);
+        }
+
+        async function startCallTo(target) {
+            if (!target || target === currentUser.username) return;
+            callTarget = target;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('videoCallModal').classList.add('active');
+                document.getElementById('videoCallModal').style.display = 'flex';
+                pc = new RTCPeerConnection();
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+                pc.ontrack = (e) => { document.getElementById('remoteVideo').srcObject = e.streams[0]; };
+                pc.onicecandidate = (e) => { if (e.candidate) db.from('calls').insert({ sender: currentUser.username, receiver: target, type: 'ice', data: e.candidate, created_at: new Date().toISOString() }); };
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                await db.from('calls').insert({ sender: currentUser.username, receiver: target, type: 'offer', data: offer, created_at: new Date().toISOString() });
+            } catch (_) { alert('无法访问摄像头/麦克风，请检查权限设置。'); }
+        }
+
+        function startCall() { startCallFromInput(); }
+
+        function subscribeCalls() {
+            const ch = db.channel('public:calls-' + currentUser.username)
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'calls', filter: 'receiver=eq.' + currentUser.username }, async payload => {
+                    const msg = payload.new;
+                    if (msg.receiver !== currentUser.username) return;
+                    try {
+                        if (msg.type === 'offer') {
+                            if (!confirm('📞 ' + msg.sender + ' 邀请你视频通话，是否接听？')) {
+                                await db.from('calls').insert({ sender: currentUser.username, receiver: msg.sender, type: 'hangup', data: {}, created_at: new Date().toISOString() });
+                                return;
+                            }
+                            pc = new RTCPeerConnection();
+                            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                            document.getElementById('localVideo').srcObject = localStream;
+                            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+                            pc.ontrack = (e) => { document.getElementById('remoteVideo').srcObject = e.streams[0]; };
+                            pc.onicecandidate = (e) => { if (e.candidate) db.from('calls').insert({ sender: currentUser.username, receiver: msg.sender, type: 'ice', data: e.candidate, created_at: new Date().toISOString() }); };
+                            await pc.setRemoteDescription(new RTCSessionDescription(msg.data));
+                            const answer = await pc.createAnswer();
+                            await pc.setLocalDescription(answer);
+                            await db.from('calls').insert({ sender: currentUser.username, receiver: msg.sender, type: 'answer', data: answer, created_at: new Date().toISOString() });
+                            document.getElementById('videoCallModal').classList.add('active');
+                            document.getElementById('videoCallModal').style.display = 'flex';
+                            callTarget = msg.sender;
+                        } else if (msg.type === 'answer') {
+                            if (pc) await pc.setRemoteDescription(new RTCSessionDescription(msg.data));
+                        } else if (msg.type === 'ice') {
+                            if (pc) await pc.addIceCandidate(new RTCIceCandidate(msg.data));
+                        } else if (msg.type === 'hangup') {
+                            alert(msg.sender + ' 已挂断通话');
+                            hangUp();
+                        }
+                    } catch (e) { console.warn('Call error:', e); }
+                })
+                .subscribe();
+            wsChannels.push(ch);
+        }
+
+        function hangUp() {
+            if (callTarget) {
+                try { db.from('calls').insert({ sender: currentUser.username, receiver: callTarget, type: 'hangup', data: {}, created_at: new Date().toISOString() }); } catch (_) {}
+            }
+            if (pc) { pc.close(); pc = null; }
+            if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+            const remoteVideo = document.getElementById('remoteVideo');
+            const localVideo = document.getElementById('localVideo');
+            if (remoteVideo) remoteVideo.srcObject = null;
+            if (localVideo) localVideo.srcObject = null;
+            document.getElementById('videoCallModal').classList.remove('active');
+            document.getElementById('videoCallModal').style.display = 'none';
+            callTarget = '';
+        }
+
+        // ============================================================
+        // 主题 / 声音
+        // ============================================================
+        function toggleTheme() {
+            document.body.classList.toggle('light');
+            try { localStorage.setItem('starry_theme', document.body.classList.contains('light') ? 'light' : 'dark'); } catch (_) {}
+        }
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundToggle').textContent = soundEnabled ? '🔔' : '🔕';
+        }
+        try { if (localStorage.getItem('starry_theme') === 'light') document.body.classList.add('light'); } catch (_) {}
+
+        // ============================================================
+        // 键盘事件
+        // ============================================================
+        document.getElementById('messageInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.isComposing && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        });
+        document.getElementById('privateChatInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); sendPrivateMessage(); }
+        });
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.classList.remove('active'); overlay.style.display = 'none'; } });
+        });
+
+        window.addEventListener('popstate', function(event) {
+            const room = event.state?.room;
+            if (room && room !== currentRoom) {
+                if (room === '大厅') { checkAndSwitchRoom('大厅'); } else {
+                    db.from('messages').select('room').eq('room', room).limit(1).then(({ data }) => {
+                        if (data && data.length > 0) { checkAndSwitchRoom(room); } else {
+                            window.history.pushState({ room: '大厅' }, '', '/starrychat/');
+                            checkAndSwitchRoom('大厅');
+                        }
+                    });
+                }
+            }
+        });
+
+        // ============================================================
+        // 启动
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            autoLogin();
+        });
+    </script>
+</body>
+</html>
