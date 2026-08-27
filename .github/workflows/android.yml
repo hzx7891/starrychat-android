@@ -1,3 +1,16 @@
+# ================================================================
+#  StarryChat Android 自动构建工作流（全面增强版）
+#  功能：
+#  1. 自动清理干扰的 workflow 文件
+#  2. 自动修复 package.json 格式
+#  3. 自动安装依赖并确保 Android 平台存在
+#  4. 自动检查并添加摄像头/麦克风权限
+#  5. 自动构建 debug APK 并上传
+#  6. 构建失败时上传日志
+#  7. 缓存 npm 和 Gradle 依赖，加快构建
+#  8. 构建信息输出与友好提示
+# ================================================================
+
 name: Build Android APK
 
 on:
@@ -9,55 +22,207 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # ---------- 1. 检出代码 ----------
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ---------- 2. 清理多余的 workflow 文件 ----------
+      - name: Remove unnecessary workflow files
+        run: |
+          echo "🧹 清理可能干扰构建的 workflow 文件..."
+          # 列出并删除常见的干扰文件（忽略不存在时的错误）
+          rm -f .github/workflows/android.yml.bak
+          rm -f .github/workflows/gradle.yml
+          rm -f .github/workflows/java-ci.yml
+          rm -f .github/workflows/dependency-submission.yml
+          echo "📂 当前 .github/workflows/ 内容："
+          ls -la .github/workflows/
+
+      # ---------- 3. 设置 Java 17 ----------
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      # ---------- 4. 设置 Node.js 20 ----------
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install npm dependencies
-        run: npm install
+      # ---------- 5. 缓存 npm 依赖 ----------
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      - name: Create capacitor.config.json if missing
+      # ---------- 6. 自动修复 package.json ----------
+      - name: Repair package.json if needed
         run: |
-          if [ ! -f capacitor.config.json ]; then
-            echo '{"appId":"com.starrychat.com","appName":"StarryChat","webDir":"www","bundledWebRuntime":false}' > capacitor.config.json
-          fi
+          echo "🔧 检查 package.json 格式..."
+          node -e "
+            const fs = require('fs');
+            try {
+              JSON.parse(fs.readFileSync('package.json','utf8'));
+              console.log('✅ package.json 格式正确');
+            } catch(e) {
+              console.log('❌ package.json 格式错误，正在自动修复...');
+              const correctJson = {
+                name: 'starrychat-android',
+                version: '1.0.0',
+                description: 'StarryChat Android app built with Capacitor',
+                private: true,
+                dependencies: {
+                  '@capacitor/android': '^5.0.0',
+                  '@capacitor/core': '^5.0.0'
+                },
+                devDependencies: {
+                  '@capacitor/cli': '^5.0.0'
+                }
+              };
+              fs.writeFileSync('package.json', JSON.stringify(correctJson, null, 2));
+              console.log('✅ package.json 已修复');
+            }
+          "
 
-      - name: Add Android platform if not exists
+      # ---------- 7. 安装依赖 ----------
+      - name: Install npm dependencies
+        run: |
+          echo "📦 安装 npm 依赖..."
+          npm install
+          echo "✅ 依赖安装完成"
+
+      # ---------- 8. 确保 Android 平台存在 ----------
+      - name: Ensure Android platform exists
         run: |
           if [ ! -d "android" ]; then
+            echo "⚠️ 未找到 android 目录，正在创建..."
             npx cap add android
+          else
+            echo "✅ android 目录已存在"
           fi
 
-      - name: Sync web assets to Android
-        run: npx cap sync android
+      # ---------- 9. 自动注入摄像头/麦克风权限 ----------
+      - name: Add camera and microphone permissions
+        run: |
+          echo "🔒 检查 AndroidManifest.xml 权限..."
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "❌ 找不到 $MANIFEST"
+            exit 1
+          fi
+          python3 - <<'PY'
+import xml.etree.ElementTree as ET
+manifest_path = "android/app/src/main/AndroidManifest.xml"
+ns = "http://schemas.android.com/apk/res/android"
+ET.register_namespace('android', ns)
+tree = ET.parse(manifest_path)
+root = tree.getroot()
+# 需要的权限列表
+required_permissions = [
+    "android.permission.CAMERA",
+    "android.permission.RECORD_AUDIO",
+    "android.permission.MODIFY_AUDIO_SETTINGS"
+]
+existing_permissions = set()
+for child in root:
+    if child.tag == "uses-permission":
+        name = child.get("{http://schemas.android.com/apk/res/android}name")
+        if name:
+            existing_permissions.add(name)
 
+missing = [p for p in required_permissions if p not in existing_permissions]
+if missing:
+    print(f"⚠️ 缺少权限：{missing}")
+    # 在 application 节点前插入缺失的权限
+    application_node = root.find("application")
+    if application_node is None:
+        print("❌ 找不到 <application> 节点")
+        exit(1)
+    for perm in missing:
+        new_perm = ET.Element("uses-permission")
+        new_perm.set("{http://schemas.android.com/apk/res/android}name", perm)
+        root.insert(list(root).index(application_node), new_perm)
+        print(f"   ➕ 已添加 {perm}")
+    tree.write(manifest_path, encoding="utf-8", xml_declaration=True)
+    print("✅ 权限添加完成")
+else:
+    print("✅ 所有必需权限已存在")
+PY
+
+      # ---------- 10. 同步 web 资源 ----------
+      - name: Sync web assets
+        run: |
+          echo "🔄 同步 www 到 Android 工程..."
+          npx cap sync android
+          echo "✅ 同步完成"
+
+      # ---------- 11. 设置 Android SDK ----------
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           api-level: 34
 
+      # ---------- 12. 缓存 Gradle 依赖 ----------
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # ---------- 13. 授予 gradlew 执行权限 ----------
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         working-directory: android
 
+      # ---------- 14. 构建 debug APK ----------
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: |
+          echo "🏗️ 开始构建 debug APK..."
+          ./gradlew assembleDebug
+          echo "✅ 构建完成"
         working-directory: android
 
+      # ---------- 15. 生成构建信息 ----------
+      - name: Create build info
+        run: |
+          echo "📝 生成构建信息..."
+          echo "Build time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" > android/app/build/outputs/apk/debug/build-info.txt
+          echo "Commit SHA: $GITHUB_SHA" >> android/app/build/outputs/apk/debug/build-info.txt
+          echo "Workflow: $GITHUB_WORKFLOW" >> android/app/build/outputs/apk/debug/build-info.txt
+
+      # ---------- 16. 上传 debug APK ----------
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/debug/build-info.txt
           if-no-files-found: error
           retention-days: 30
+
+      # ---------- 17. 构建失败时上传日志 ----------
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            android/app/build/reports/
+            android/app/build/outputs/logs/
+          if-no-files-found: ignore
+
+      # ---------- 18. 成功提示 ----------
+      - name: Build succeeded notification
+        if: success()
+        run: |
+          echo "🎉 构建成功！APK 已上传到 Artifacts，可前往下载。"
